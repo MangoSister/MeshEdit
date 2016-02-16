@@ -3,6 +3,11 @@
 !CMU462/
 CMU462/*
 !CMU462/include/
+!CMU462/include/**
+CMU462/include/*
+!CMU462/include/CMU462/
+!CMU462/include/CMU462/*
 !CMU462/src/
+!CMU462/src/*
 !.gitignore
 !CMakeLists
