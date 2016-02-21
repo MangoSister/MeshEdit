@@ -27,7 +27,7 @@ namespace CMU462
 		 
 		 //Ignore requests to flip boundary edges
 		 if(f0->isBoundary() || f1->isBoundary())
-			 return VertexIter();
+			 return verticesEnd();
 		 
 		 HalfedgeIter h1 = h0->next();
 		 HalfedgeIter h2 = h1->next();
@@ -136,8 +136,180 @@ namespace CMU462
    VertexIter HalfedgeMesh::collapseEdge( EdgeIter e )
    {
       // TODO This method should collapse the given edge and return an iterator to the new vertex created by the collapse.
+		 
+		 //1. collect elements
+		 EdgeIter e4 = e;
 
-			return VertexIter();
+		 //Halfedges
+		 HalfedgeIter h1 = e4->halfedge();
+		 HalfedgeIter h5 = h1->twin();
+		 
+		 //Faces
+		 FaceIter f0 = h1->face();
+		 FaceIter f1 = h5->face();
+		 
+		 //Ignore requests to collapse boundary edges
+		 if(f0->isBoundary() || f1->isBoundary())
+			 return verticesEnd();
+		 
+		 //Halfedges, cont'
+		 HalfedgeIter h2 = h1->next();
+		 HalfedgeIter h0 = h2->next();
+		 HalfedgeIter h3 = h5->next();
+		 HalfedgeIter h4 = h3->next();
+		 
+		 HalfedgeIter h20 = h2->twin();
+		 HalfedgeIter h21 = h20->next();
+		 HalfedgeIter h29 = h21->next();
+		 
+		 HalfedgeIter h18 = h21->twin();
+		 HalfedgeIter h19 = h18->next();
+		 HalfedgeIter h28 = h19->next();
+		 
+		 HalfedgeIter h16 = h19->twin();
+		 HalfedgeIter h17 = h16->next();
+		 HalfedgeIter h27 = h17->next();
+		 
+		 
+		 HalfedgeIter h15 = h4->twin();
+		 HalfedgeIter h26 = h15->next();
+		 HalfedgeIter h14 = h26->next();
+		 
+		 HalfedgeIter h12 = h3->twin();
+		 HalfedgeIter h13 = h12->next();
+		 HalfedgeIter h25 = h13->next();
+		 
+		 HalfedgeIter h10 = h13->twin();
+		 HalfedgeIter h11 = h10->next();
+		 HalfedgeIter h24 = h11->next();
+		 
+		 HalfedgeIter h8 = h11->twin();
+		 HalfedgeIter h9 = h8->next();
+		 HalfedgeIter h23 = h9->next();
+		 
+		 HalfedgeIter h6 = h9->twin();
+		 HalfedgeIter h7 = h6->next();
+		 HalfedgeIter h22 = h7->next();
+		 
+		 //Vertices
+		 VertexIter v0 = h0->vertex();
+		 VertexIter v1 = h3->vertex();
+		 VertexIter v2 = h4->vertex();
+		 VertexIter v3 = h2->vertex();
+		 
+		 //Edges
+		 EdgeIter e0 = h0->edge();
+		 EdgeIter e1 = h3->edge();
+		 EdgeIter e2 = h4->edge();
+		 EdgeIter e3 = h2->edge();
+			//EdgeIter e4
+		 EdgeIter e5 = h6->edge();
+		 EdgeIter e6 = h8->edge();
+		 EdgeIter e7 = h10->edge();
+		 EdgeIter e8 = h14->edge();
+		 EdgeIter e9 = h16->edge();
+		 EdgeIter e10 = h18->edge();
+		 
+		 //Faces
+		 //FaceIter f0 = h0->face();
+		 //FaceIter f1 = h3->face();
+		 FaceIter f2 = h6->face();
+		 FaceIter f3 = h8->face();
+		 FaceIter f4 = h10->face();
+		 FaceIter f5 = h12->face();
+		 FaceIter f6 = h14->face();
+		 FaceIter f7 = h16->face();
+		 FaceIter f8 = h18->face();
+		 FaceIter f9 = h20->face();
+		 
+		 //2. reassign elements
+		 //Halfedges
+		 h0->setNeighbors(h21, h7, v0, e0, f9);
+		 //h0->next() = h21; h0->face() = h20->face();
+		 
+		 h7->setNeighbors(h22, h0, v1, e0, f2);
+		 h6->setNeighbors(h7, h9, h6->vertex(), e5, f2);
+		 h22->next() = h6;
+		 
+		 h9->setNeighbors(h23, h6, v1, e5, f3);
+		 h8->setNeighbors(h9, h11, h8->vertex(), e6, f3);
+		 h23->next() = h8;
+		 
+		 h11->setNeighbors(h24, h8, v1, e6, f4);
+		 h10->setNeighbors(h11, h13, h10->vertex(), e7, f4);
+		 h24->next() = h10;
+		 
+		 h13->setNeighbors(h25, h10, v1, e7, f5);
+		 h12->setNeighbors(h13, h3, v2, e1, f5);
+		 h25->next() = h12;
+		 
+		 h3->setNeighbors(h26, h12, v1, e1, f6);
+		 //h3->next() = h26; h3->face() = f6;
+		 
+		 h14->setNeighbors(h3, h17, h14->vertex(), e8, f6);
+		 //h14->next() = h3;
+		 h26->next() = h14;
+		 
+		 h17->setNeighbors(h27, h14, v1, e8, f7);
+		 h16->setNeighbors(h17, h19, h16->vertex(), e9, f7);
+		 h27->next() = h16;
+		 
+		 h19->setNeighbors(h28, h16, v1, e9, f8);
+		 h18->setNeighbors(h19, h21, h18->vertex(), e10, f8);
+		 h28->next() = h18;
+		 
+		 h21->setNeighbors(h29, h18, v1, e10, f9);
+		 h29->next() = h0;
+
+		 //Vertices
+		 v0->halfedge() = h0;
+		 v1->halfedge() = h3;
+		 v1->position = 0.5f * (v1->position + v3->position);
+		 v2->halfedge() = h12;
+		 
+		 //Edges
+		 e0->halfedge() = h0;
+		 e5->halfedge() = h6;
+		 e6->halfedge() = h8;
+		 e7->halfedge() = h10;
+		 e1->halfedge() = h3;
+		 e8->halfedge() = h14;
+		 e9->halfedge() = h16;
+		 e10->halfedge() = h18;
+		 
+		 //Faces
+		 f2->halfedge() = h6;
+		 f3->halfedge() = h8;
+		 f4->halfedge() = h10;
+		 f5->halfedge() = h12;
+		 f6->halfedge() = h3;
+		 f7->halfedge() = h16;
+		 f8->halfedge() = h18;
+		 f9->halfedge() = h0;
+
+		 //3. delete elements
+		 //Halfedges
+		 deleteHalfedge(h1);
+		 deleteHalfedge(h2);
+		 deleteHalfedge(h4);
+		 deleteHalfedge(h5);
+		 deleteHalfedge(h15);
+		 deleteHalfedge(h20);
+		 
+		 //Vertices
+		 deleteVertex(v3);
+		 
+		 //Edges
+		 deleteEdge(e2);
+		 deleteEdge(e3);
+		 deleteEdge(e4);
+		 
+		 //Faces
+		 deleteFace(f0);
+		 deleteFace(f1);
+		 
+		 
+			return v1;
    }
 
    EdgeIter HalfedgeMesh::flipEdge( EdgeIter e0 )
@@ -156,7 +328,7 @@ namespace CMU462
 
 		 //Ignore requests to flip boundary edges
 		 if(f0->isBoundary() || f1->isBoundary())
-			 return e0;
+			 return edgesEnd();
 		 
 		 HalfedgeIter h1 = h0->next();
 		 HalfedgeIter h2 = h1->next();
