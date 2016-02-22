@@ -148,7 +148,7 @@ namespace CMU462
 		 FaceIter f0 = h1->face();
 		 FaceIter f1 = h5->face();
 		 
-		 //Ignore requests to collapse boundary edges
+		 //Early Exit #1: Ignore requests to collapse boundary edges
 		 if(f0->isBoundary() || f1->isBoundary())
 			 return verticesEnd();
 		 
@@ -158,31 +158,11 @@ namespace CMU462
 		 HalfedgeIter h3 = h5->next();
 		 HalfedgeIter h4 = h3->next();
 		 
-		 HalfedgeIter h20 = h2->twin();
-		 HalfedgeIter h21 = h20->next();
-		 HalfedgeIter h29 = h21->next();
-		 
-		 HalfedgeIter h15 = h4->twin();
-		 HalfedgeIter h26 = h15->next();
-		 HalfedgeIter h14 = h26->next();
-		 
+		 HalfedgeIter h7 = h0->twin();
 		 HalfedgeIter h12 = h3->twin();
 		 
-		 
-		 //Vertices
-		 VertexIter v0 = h0->vertex();
-		 VertexIter v1 = h3->vertex();
-		 VertexIter v2 = h4->vertex();
-		 VertexIter v3 = h2->vertex();
-		 
-		 std::vector<HalfedgeIter> v3_out;
-		 HalfedgeIter h = v3->halfedge();
-		 do
-		 {
-			 v3_out.push_back(h);
-			 h = h->next()->next()->twin();
-		 }
-		 while(h != v3->halfedge());
+		 HalfedgeIter h20 = h2->twin();
+		 HalfedgeIter h15 = h4->twin();
 		 
 		 //Edges
 		 EdgeIter e0 = h0->edge();
@@ -192,58 +172,148 @@ namespace CMU462
 			//EdgeIter e4
 		 
 		 //Faces
-		 FaceIter f6 = h14->face();
-		 FaceIter f9 = h20->face();
-		 
-		 //2. reassign elements
-		 
-		 //Halfedges
-		 h0->next() = h21; h0->face() = f9;
-		 h29->next() = h0;
-		 
-		 h3->next() = h26; h3->face() = f6;
-		 h14->next() = h3;
-		 
-		 for(auto h = v3_out.begin(); h!= v3_out.end(); ++h)
-			 (*h)->vertex() = v1;
 		 
 		 //Vertices
-		 v0->halfedge() = h0;
-		 v1->halfedge() = h3;
-		 v1->position = 0.5f * (v1->position + v3->position);
-		 v2->halfedge() = h12;
+		 VertexIter v0 = h0->vertex();
+		 VertexIter v1 = h3->vertex();
+		 VertexIter v2 = h4->vertex();
+		 VertexIter v3 = h2->vertex();
 		 
-		 //Edges
-		 e0->halfedge() = h0;
-		 e1->halfedge() = h3;
+		 //Early Exit #2: boundary vertex needs at least one triangle
+		 //By convention, Vertex::degree() returns the face degree
+		 if(v0->isBoundary() && v0->degree() <= 1)
+			 return verticesEnd();
+		 if(v1->isBoundary() && v1->degree() <= 1)
+			 return verticesEnd();
+		 if(v2->isBoundary() && v2->degree() <= 1)
+			 return verticesEnd();
+		 if(v3->isBoundary() && v3->degree() <= 1)
+			 return verticesEnd();
+		
+		 //Early Exit #3: degenerated case: v0/v1/v2/v3 are duplicated
+		 if(v0 == v1 || v0 == v2 || v0 == v3 || v1 == v2 || v1 == v3 || v2 == v3)
+			 return verticesEnd();
 		 
-		 //Faces
-		 f6->halfedge() = h3;
-		 f9->halfedge() = h0;
-
-		 //3. delete elements
-		 //Halfedges
-		 deleteHalfedge(h1);
-		 deleteHalfedge(h2);
-		 deleteHalfedge(h4);
-		 deleteHalfedge(h5);
-		 deleteHalfedge(h15);
-		 deleteHalfedge(h20);
+		 //Early Exit #4: v1, v3 cannot be both boundary vertex
+		 if(v1->isBoundary() && v3->isBoundary())
+			 return verticesEnd();
+		 else if(v3->isBoundary())
+		 {
+			 std::vector<HalfedgeIter> v1_out;
+			 HalfedgeIter h = v1->halfedge();
+			 do
+			 {
+				 v1_out.push_back(h);
+				 h = h->next()->next()->twin();
+			 }
+			 while(h != v1->halfedge());
+			 
+			 //2. reassign elements
+			 
+			 //Halfedges
+			 h7->twin() = h20; h7->edge() = e3;
+			 h20->twin() = h7;
+			 h12->twin() = h15; h12->edge() = e2;
+			 h15->twin() = h12;
+			 
+			 for(auto h = v1_out.begin(); h!= v1_out.end(); ++h)
+				 (*h)->vertex() = v3;
+			 
+			 //Vertices
+			 v0->halfedge() = h20;
+			 v3->halfedge() = h15;
+			 v3->position = 0.5f * (v1->position + v3->position);
+			 v2->halfedge() = h12;
+			 
+			 //Edges
+			 e3->halfedge() = h20;
+			 e2->halfedge() = h15;
+			 
+			 //Faces
+			 
+			 //3. delete elements
+			 //Halfedges
+			 deleteHalfedge(h0);
+			 deleteHalfedge(h1);
+			 deleteHalfedge(h2);
+			 deleteHalfedge(h3);
+			 deleteHalfedge(h4);
+			 deleteHalfedge(h5);
+			 
+			 //Vertices
+			 deleteVertex(v1);
+			 
+			 //Edges
+			 deleteEdge(e0);
+			 deleteEdge(e1);
+			 deleteEdge(e4);
+			 
+			 //Faces
+			 deleteFace(f0);
+			 deleteFace(f1);
+			 
+			 
+			 return v1;
+		 }
+		 else
+		 {
+			 std::vector<HalfedgeIter> v3_out;
+			 HalfedgeIter h = v3->halfedge();
+			 do
+			 {
+				 v3_out.push_back(h);
+				 h = h->next()->next()->twin();
+			 }
+			 while(h != v3->halfedge());
+			 
+			 //2. reassign elements
+			 
+			 //Halfedges
+			 h7->twin() = h20;
+			 h20->twin() = h7; h20->edge() = e0;
+			 h12->twin() = h15;
+			 h15->twin() = h12; h15->edge() = e1;
+			 
+			 for(auto h = v3_out.begin(); h!= v3_out.end(); ++h)
+				 (*h)->vertex() = v1;
+			 
+			 //Vertices
+			 v0->halfedge() = h20;
+			 v1->halfedge() = h15;
+			 v1->position = 0.5f * (v1->position + v3->position);
+			 v2->halfedge() = h12;
+			 
+			 //Edges
+			 e0->halfedge() = h20;
+			 e1->halfedge() = h15;
+			 
+			 //Faces
+			 
+			 //3. delete elements
+			 //Halfedges
+			 deleteHalfedge(h0);
+			 deleteHalfedge(h1);
+			 deleteHalfedge(h2);
+			 deleteHalfedge(h3);
+			 deleteHalfedge(h4);
+			 deleteHalfedge(h5);
+			 
+			 //Vertices
+			 deleteVertex(v3);
+			 
+			 //Edges
+			 deleteEdge(e2);
+			 deleteEdge(e3);
+			 deleteEdge(e4);
+			 
+			 //Faces
+			 deleteFace(f0);
+			 deleteFace(f1);
+			 
+			 
+			 return v1;
+		 }
 		 
-		 //Vertices
-		 deleteVertex(v3);
-		 
-		 //Edges
-		 deleteEdge(e2);
-		 deleteEdge(e3);
-		 deleteEdge(e4);
-		 
-		 //Faces
-		 deleteFace(f0);
-		 deleteFace(f1);
-		 
-		 
-			return v1;
    }
 
    EdgeIter HalfedgeMesh::flipEdge( EdgeIter e0 )
@@ -260,7 +330,7 @@ namespace CMU462
 		 FaceIter f0 = h0->face();
 		 FaceIter f1 = h3->face();
 
-		 //Ignore requests to flip boundary edges
+		 //Early Exit #1: Ignore requests to flip boundary edges
 		 if(f0->isBoundary() || f1->isBoundary())
 			 return edgesEnd();
 		 
@@ -281,6 +351,17 @@ namespace CMU462
 		 VertexIter v1 = h3->vertex();
 		 VertexIter v2 = h2->vertex();
 		 VertexIter v3 = h5->vertex();
+		 
+		 //Early Exit #2: Does the flipped edge already exist?
+		 HalfedgeIter h = v2->halfedge();
+		 do
+		 {
+			 h = h->twin();
+			 if(h->vertex() == v2)
+				 return edgesEnd();
+			 h = h->next();
+		 }
+		 while(h != v2->halfedge());
 		 
 		 //Edges
 		 //e0 is given
