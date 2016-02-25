@@ -428,10 +428,40 @@ namespace CMU462
       // TODO Compute new positions for all the vertices in the input mesh, using the Loop subdivision rule,
       // TODO and store them in Vertex::newPosition. At this point, we also want to mark each vertex as being
       // TODO a vertex of the original mesh.
-
+			for(VertexIter v = mesh.verticesBegin(); v != mesh.verticesEnd(); ++v )
+			{
+				v->isNew = false;
+				//By convention, Vertex::degree() returns the face degree,
+				//not the edge degree. The edge degree can be computed by finding the face
+				//degree, and adding 1 if the vertex is a boundary vertex.
+				int degree = v->degree();
+				if(v->isBoundary())
+					degree++;
+				float u = degree == 3 ? 0.1875f : (3.0f / (8.0f * degree)); //0.1875 = 3/16
+				v->newPosition = v->position * (1.0f - u * degree);
+				HalfedgeIter h = v->halfedge();
+				do
+				{
+					h = h->twin();
+					v->newPosition += (h->vertex()->position * u);
+					h = h->next();
+				}
+				while(h != v->halfedge());
+			}
 
       // TODO Next, compute the updated vertex positions associated with edges, and store it in Edge::newPosition.
-
+			for(EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); ++e)
+			{
+				e->isNew = false;
+				Vector3D v0,v1; //this diagonal
+				v0 = e->halfedge()->vertex()->position;
+				v1 = e->halfedge()->twin()->vertex()->position;
+				e->newPosition = 0.375f * (v0 + v1);
+				Vector3D v2,v3; //opposite diagonal
+				v2 = e->halfedge()->next()->next()->vertex()->position;
+				v3 = e->halfedge()->twin()->next()->next()->vertex()->position;
+				e->newPosition += 0.125 * (v2 + v3);
+			}
 
       // TODO Next, we're going to split every edge in the mesh, in any order.  For future
       // TODO reference, we're also going to store some information about which subdivided
@@ -439,12 +469,51 @@ namespace CMU462
       // TODO by setting the flat Edge::isNew.  Note that in this loop, we only want to iterate
       // TODO over edges of the original mesh---otherwise, we'll end up splitting edges that we
       // TODO just split (and the loop will never end!)
-
+			EdgeIter e = mesh.edgesBegin();
+			while(e != mesh.edgesEnd())
+			{
+				EdgeIter next = e;
+				++next;
+				if(!e->isNew &&
+					 !e->halfedge()->vertex()->isNew &&
+					 !e->halfedge()->twin()->vertex()->isNew)
+				{
+					VertexIter e_v0 = e->halfedge()->vertex();
+					VertexIter e_v1 = e->halfedge()->twin()->vertex();
+					VertexIter v_new = mesh.splitEdge(e);
+					v_new->isNew = true;
+					v_new->position = e->newPosition;
+					
+					HalfedgeIter h = v_new->halfedge();
+					do
+					{
+						h = h->twin();
+						VertexIter v = h->vertex();
+						h->edge()->isNew = (v != e_v0 && v != e_v1);
+						h = h->next();
+					}
+					while(h != v_new->halfedge());
+				}
+				
+				e = next;
+			}
 
       // TODO Now flip any new edge that connects an old and new vertex.
-
+			for(EdgeIter e = mesh.edgesBegin(); e!= mesh.edgesEnd(); ++e)
+			{
+				VertexIter v0 = e->halfedge()->vertex();
+				VertexIter v1 = e->halfedge()->twin()->vertex();
+				bool v_old_new = (v0->isNew && !v1->isNew) || (!v0->isNew && v1->isNew);
+				if(v_old_new && e->isNew)
+					mesh.flipEdge(e);
+			}
 
       // TODO Finally, copy the new vertex positions into final Vertex::position.
+		 for(VertexIter v = mesh.verticesBegin(); v != mesh.verticesEnd(); ++v)
+		 {
+			 if(!v->isNew)
+				 v->position = v->newPosition;
+		 }
    }
 
    // Given an edge, the constructor for EdgeRecord finds the
