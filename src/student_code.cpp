@@ -559,36 +559,69 @@ namespace CMU462
 			for(VertexIter v = mesh.verticesBegin(); v != mesh.verticesEnd(); ++v )
 			{
 				v->isNew = false;
-				//By convention, Vertex::degree() returns the face degree,
-				//not the edge degree. The edge degree can be computed by finding the face
-				//degree, and adding 1 if the vertex is a boundary vertex.
-				int degree = v->degree();
-				if(v->isBoundary())
-					degree++;
-				float u = degree == 3 ? 0.1875f : (3.0f / (8.0f * degree)); //0.1875 = 3/16
-				v->newPosition = v->position * (1.0f - u * degree);
-				HalfedgeIter h = v->halfedge();
-				do
+				if(!v->isBoundary())
 				{
-					h = h->twin();
-					v->newPosition += (h->vertex()->position * u);
-					h = h->next();
+					//By convention, Vertex::degree() returns the face degree,
+					//not the edge degree. The edge degree can be computed by finding the face
+					//degree, and adding 1 if the vertex is a boundary vertex.
+					int degree = v->degree();
+					if(v->isBoundary())
+						degree++;
+					float u = degree == 3 ? 0.1875f : (3.0f / (8.0f * degree)); //0.1875 = 3/16
+					v->newPosition = v->position * (1.0f - u * degree);
+					HalfedgeIter h = v->halfedge();
+					do
+					{
+						h = h->twin();
+						v->newPosition += (h->vertex()->position * u);
+						h = h->next();
+					}
+					while(h != v->halfedge());
+					}
+				else
+				{
+					HalfedgeIter h0_b = v->halfedge();
+					while(!h0_b->isBoundary())
+						h0_b = h0_b->twin()->next();
+					VertexIter v0_b = h0_b->twin()->vertex();
+					
+					HalfedgeIter h1_b = v->halfedge();
+					do
+					{
+						h1_b = h1_b->twin();
+						if(h1_b->isBoundary())
+							break;
+						h1_b = h1_b->next();
+					}
+					while(h1_b != v->halfedge());
+					VertexIter v1_b = h1_b->vertex();
+					v->newPosition = 0.75f * v->position + 0.125f * (v0_b->position + v1_b->position);
 				}
-				while(h != v->halfedge());
 			}
 
       // TODO Next, compute the updated vertex positions associated with edges, and store it in Edge::newPosition.
 			for(EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); ++e)
 			{
 				e->isNew = false;
-				Vector3D v0,v1; //this diagonal
-				v0 = e->halfedge()->vertex()->position;
-				v1 = e->halfedge()->twin()->vertex()->position;
-				e->newPosition = 0.375f * (v0 + v1);
-				Vector3D v2,v3; //opposite diagonal
-				v2 = e->halfedge()->next()->next()->vertex()->position;
-				v3 = e->halfedge()->twin()->next()->next()->vertex()->position;
-				e->newPosition += 0.125 * (v2 + v3);
+				FaceIter f0 = e->halfedge()->face();
+				FaceIter f1 = e->halfedge()->twin()->face();
+				if(f0->isBoundary() || f1->isBoundary())
+				{
+					VertexIter v0_b = e->halfedge()->vertex();
+					VertexIter v1_b = e->halfedge()->twin()->vertex();
+					e->newPosition = 0.5f * (v0_b->position + v1_b->position);
+				}
+				else
+				{
+					Vector3D v0,v1; //this diagonal
+					v0 = e->halfedge()->vertex()->position;
+					v1 = e->halfedge()->twin()->vertex()->position;
+					e->newPosition = 0.375f * (v0 + v1);
+					Vector3D v2,v3; //opposite diagonal
+					v2 = e->halfedge()->next()->next()->vertex()->position;
+					v3 = e->halfedge()->twin()->next()->next()->vertex()->position;
+					e->newPosition += 0.125 * (v2 + v3);
+				}
 			}
 
       // TODO Next, we're going to split every edge in the mesh, in any order.  For future
