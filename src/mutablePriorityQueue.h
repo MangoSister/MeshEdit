@@ -90,7 +90,11 @@ namespace CMU462
          {
             queue.erase( queue.begin() );
          }
-
+		 
+		     inline size_t size( void )
+		     {
+						return queue.size();
+				 }
       protected:
          set<T> queue;
    };

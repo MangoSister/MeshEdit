@@ -395,7 +395,15 @@ namespace CMU462
          {
             return _isBoundary;
          }
-
+		 
+				/**
+				 * set if this face represents a boundary loop
+				 */
+				 void markBoundary( bool mark )
+				 {
+						_isBoundary = mark;
+				 }
+		 
          /**
           * Get a unit face normal (computed via the area vector).
           * \returns a unit face normal (computed via the area vector).

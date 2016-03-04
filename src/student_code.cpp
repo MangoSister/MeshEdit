@@ -24,7 +24,7 @@ namespace CMU462
 		 FaceIter f0 = h0->face();
 		 FaceIter f1 = h3->face();
 		 
-		 //Ignore requests to flip boundary edges
+		 //Ignore requests to split boundary edges
 		 if(f0->isBoundary() && f1->isBoundary())
 			 return verticesEnd();
 		 else if(f0->isBoundary())
@@ -260,7 +260,55 @@ namespace CMU462
 			 return v4;
 		 }
 	 }
-
+	
+	
+	 bool willCollapseBeValid(EdgeIter e)
+	 {
+		 EdgeIter e4 = e;
+		 
+		 //Halfedges
+		 HalfedgeIter h1 = e4->halfedge();
+		 HalfedgeIter h5 = h1->twin();
+		 
+		 //Faces
+		 FaceIter f0 = h1->face();
+		 FaceIter f1 = h5->face();
+		 
+		 if(f0->isBoundary() || f1->isBoundary())
+			 return false;
+		 
+		 //Halfedges, cont'
+		 HalfedgeIter h2 = h1->next();
+		 HalfedgeIter h0 = h2->next();
+		 HalfedgeIter h3 = h5->next();
+		 HalfedgeIter h4 = h3->next();
+		 
+		 //Vertices
+		 VertexIter v0 = h0->vertex();
+		 VertexIter v1 = h3->vertex();
+		 VertexIter v2 = h4->vertex();
+		 VertexIter v3 = h2->vertex();
+		 
+		 if(v0->isBoundary() && v0->degree() <= 1)
+			 return false;
+		 if(v1->isBoundary() && v1->degree() <= 1)
+			 return false;
+		 if(v2->isBoundary() && v2->degree() <= 1)
+			 return false;
+		 if(v3->isBoundary() && v3->degree() <= 1)
+			 return false;
+		 
+		 //Early Exit #3: degenerated case: v0/v1/v2/v3 are duplicated
+		 if(v0 == v1 || v0 == v2 || v0 == v3 || v1 == v2 || v1 == v3 || v2 == v3)
+			 return false;
+		 
+		 //Early Exit #4: v1, v3 cannot be both boundary vertex
+		 if(v1->isBoundary() && v3->isBoundary())
+			 return false;
+		 
+		 return true;
+	 }
+	
    VertexIter HalfedgeMesh::collapseEdge( EdgeIter e )
    {
       // TODO This method should collapse the given edge and return an iterator to the new vertex created by the collapse.
@@ -325,7 +373,9 @@ namespace CMU462
 		 //Early Exit #4: v1, v3 cannot be both boundary vertex
 		 if(v1->isBoundary() && v3->isBoundary())
 			 return verticesEnd();
-		 else if(v3->isBoundary())
+		 
+		 VertexIter output = verticesEnd();
+		 if(v3->isBoundary())
 		 {
 			 std::vector<HalfedgeIter> v1_out;
 			 HalfedgeIter h = v1->halfedge();
@@ -380,8 +430,7 @@ namespace CMU462
 			 deleteFace(f0);
 			 deleteFace(f1);
 			 
-			 
-			 return v1;
+			 output = v3;
 		 }
 		 else
 		 {
@@ -438,10 +487,18 @@ namespace CMU462
 			 deleteFace(f0);
 			 deleteFace(f1);
 			 
-			 
-			 return v1;
+			 output = v1;
 		 }
 		 
+		 //handle degenerated cases
+		 if(nFaces() == 2 && nVertices() == 3 && nEdges() == 3 && boundaries.size() == 0)
+		 {
+			 facesBegin()->markBoundary(true);
+			 boundaries.insert(boundaries.end(), *facesBegin());
+			 deleteFace(facesBegin());
+		 }
+		 
+		 return output;
    }
 
    EdgeIter HalfedgeMesh::flipEdge( EdgeIter e0 )
@@ -457,7 +514,7 @@ namespace CMU462
 		 //Faces
 		 FaceIter f0 = h0->face();
 		 FaceIter f1 = h3->face();
-
+		 
 		 //Early Exit #1: Ignore requests to flip boundary edges
 		 if(f0->isBoundary() || f1->isBoundary())
 			 return edgesEnd();
@@ -685,19 +742,26 @@ namespace CMU462
    : edge( _edge )
    {
       // TODO Compute the combined quadric from the edge endpoints.
-
-
+			Matrix4x4 q = _edge->halfedge()->vertex()->quadric +
+										_edge->halfedge()->twin()->vertex()->quadric;
+		 
       // TODO Build the 3x3 linear system whose solution minimizes
       // the quadric error associated with these two endpoints.
-
-
+			Matrix3x3 quadratic;
+			quadratic(0,0) =  q(0,0); quadratic(0,1) =  q(0,1); quadratic(0,2) =  q(0,2);
+			quadratic(1,0) =  q(1,0); quadratic(1,1) =  q(1,1); quadratic(1,2) =  q(1,2);
+			quadratic(2,0) =  q(2,0); quadratic(2,1) =  q(2,1); quadratic(2,2) =  q(2,2);
+			Vector3D linear(q(3,0), q(3,1), q(3,2));
+		 
       // TODO Use this system to solve for the optimal position, and
       // TODO store it in EdgeRecord::optimalPoint.
-
-
+			optimalPoint = - quadratic.inv() * linear;
+		 
       // TODO Also store the cost associated with collapsing this edge
       // TODO in EdgeRecord::Cost.
-
+			Vector4D optH(optimalPoint);
+			optH.w = 1.0f;
+			score = dot(optH, q * optH);
    }
 
    void MeshResampler::downsample( HalfedgeMesh& mesh )
@@ -705,21 +769,99 @@ namespace CMU462
       // TODO Compute initial quadrics for each face by simply writing the plane
       // equation for the face in homogeneous coordinates.  These quadrics should
       // be stored in Face::quadric
-
+			for(auto face = mesh.facesBegin(); face != mesh.facesEnd(); ++face)
+			{
+				Vector3D n = face->normal();
+				Vector4D v(n);
+				v.w = - dot(n, face->halfedge()->vertex()->position);
+				//a: v->x; b: v->y; c: v->z; d: v->w
+				face->quadric = outer(v, v);
+			}
 
       // TODO Compute an initial quadric for each vertex as the sum of the quadrics
       // associated with the incident faces, storing it in Vertex::quadric
-
+			for(auto vertex = mesh.verticesBegin(); vertex != mesh.verticesEnd(); ++vertex)
+			{
+				//traverse all the non-boundary faces associated with the vertex
+				vertex->quadric.zero();
+				HalfedgeIter h = vertex->halfedge();
+				do
+				{
+					if(!h->face()->isBoundary())
+						vertex->quadric += h->face()->quadric;
+					h = h->twin()->next();
+				}
+				while(h != vertex->halfedge());
+			}
 
       // TODO Build a priority queue of edges according to their quadric error cost,
       // TODO i.e., by building an EdgeRecord for each edge and sticking it in the queue.
-
-
+			MutablePriorityQueue<EdgeRecord> pqueue;
+			
+			for(auto edge = mesh.edgesBegin(); edge != mesh.edgesEnd(); ++edge)
+			{
+				if(!willCollapseBeValid(edge))
+					continue;
+				EdgeRecord rec = EdgeRecord(edge);
+				pqueue.insert(rec);
+			}
+		 
       // TODO Until we reach the target edge budget, collapse the best edge.  Remember
       // TODO to remove from the queue any edge that touches the collapsing edge BEFORE
       // TODO it gets collapsed, and add back into the queue any edge touching the collapsed
       // TODO vertex AFTER it's been collapsed.  Also remember to assign a quadric to the
       // TODO collapsed vertex, and to pop the collapsed edge off the top of the queue.
+			Size target_tri_num = mesh.nFaces() >> 2;
+			while(mesh.nFaces() > target_tri_num && pqueue.size() > 0)
+			{
+				//1. Get the cheapest edge from the queue.
+				EdgeRecord curr = pqueue.top();
+				
+				//2. Remove the cheapest edge from the queue by calling pop().
+				pqueue.pop();
+				
+				//3. Compute the new quadric by summing the quadrics at its two endpoints.
+				VertexIter v0 = curr.edge->halfedge()->vertex();
+				VertexIter v1 = curr.edge->halfedge()->twin()->vertex();
+				Matrix4x4 q_new = v0->quadric +	v1->quadric;
+				
+				//4. Remove any edge touching either of its endpoints from the queue.
+				HalfedgeIter h = v0->halfedge();
+				do
+				{
+					pqueue.remove(h->edge());
+					h = h->twin()->next();
+				}
+				while(h != v0->halfedge());
+				
+				h = v1->halfedge();
+				do
+				{
+					pqueue.remove(h->edge());
+					h = h->twin()->next();
+				}
+				while(h != v1->halfedge());
+				
+				//5. Collapse the edge.
+				VertexIter v_new = mesh.collapseEdge(curr.edge);
+				
+				//6. Set the quadric of the new vertex to the quadric computed in Step 2.
+				v_new->quadric = q_new;
+				
+				//7. Insert any edge touching the new vertex into the queue, creating new edge records for each of them.
+				h = v_new->halfedge();
+				do
+				{
+					if(willCollapseBeValid(h->edge()))
+					{
+						EdgeRecord rec(h->edge());
+						pqueue.insert(rec);
+					}
+					h = h->twin()->next();
+				}
+				while(h != v_new->halfedge());
+				
+			}
    }
 
    void Vertex::computeCentroid( void )
