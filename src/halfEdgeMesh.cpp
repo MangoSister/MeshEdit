@@ -10,7 +10,8 @@ namespace CMU462 {
 
   bool Edge::isBoundary( void )
   {
-	return halfedge()->face()->isBoundary();
+		return halfedge()->face()->isBoundary() ||
+					 halfedge()->twin()->face()->isBoundary();
   }
 
   Vector3D Face::normal( void ) const

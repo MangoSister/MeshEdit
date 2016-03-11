@@ -8,16 +8,16 @@
 #include "student_code.h"
 #include "mutablePriorityQueue.h"
 
-namespace std
-{
-	template<> struct hash<EdgeIter>
-	{
-		std::size_t operator()(const EdgeIter& e) const
-		{
-			return std::hash<CMU462::Edge*>()(&*e);
-		}
-	};
-}
+//namespace std
+//{
+//	template<> struct hash<EdgeIter>
+//	{
+//		std::size_t operator()(const EdgeIter& e) const
+//		{
+//			return std::hash<CMU462::Edge*>()(&*e);
+//		}
+//	};
+//}
 
 namespace CMU462
 {
@@ -320,202 +320,6 @@ namespace CMU462
 		 return true;
 	 }
 	
-	 VertexIter HalfedgeMesh::collapseEdge(EdgeIter e, std::unordered_map<EdgeIter, bool>& markedEdges)
-	{
-		//1. collect elements
-		EdgeIter e4 = e;
-		
-		//Halfedges
-		HalfedgeIter h1 = e4->halfedge();
-		HalfedgeIter h5 = h1->twin();
-		
-		//Faces
-		FaceIter f0 = h1->face();
-		FaceIter f1 = h5->face();
-		
-		//Early Exit #1: Ignore requests to collapse boundary edges
-		if(f0->isBoundary() || f1->isBoundary())
-			return verticesEnd();
-		
-		//Halfedges, cont'
-		HalfedgeIter h2 = h1->next();
-		HalfedgeIter h0 = h2->next();
-		HalfedgeIter h3 = h5->next();
-		HalfedgeIter h4 = h3->next();
-		
-		HalfedgeIter h7 = h0->twin();
-		HalfedgeIter h12 = h3->twin();
-		
-		HalfedgeIter h20 = h2->twin();
-		HalfedgeIter h15 = h4->twin();
-		
-		//Edges
-		EdgeIter e0 = h0->edge();
-		EdgeIter e1 = h3->edge();
-		EdgeIter e2 = h4->edge();
-		EdgeIter e3 = h2->edge();
-		//EdgeIter e4
-		
-		//Faces
-		
-		//Vertices
-		VertexIter v0 = h0->vertex();
-		VertexIter v1 = h3->vertex();
-		VertexIter v2 = h4->vertex();
-		VertexIter v3 = h2->vertex();
-		
-		//Early Exit #2: boundary vertex needs at least one triangle
-		//By convention, Vertex::degree() returns the face degree
-		if(v0->isBoundary() && v0->degree() <= 1)
-			return verticesEnd();
-		if(v1->isBoundary() && v1->degree() <= 1)
-			return verticesEnd();
-		if(v2->isBoundary() && v2->degree() <= 1)
-			return verticesEnd();
-		if(v3->isBoundary() && v3->degree() <= 1)
-			return verticesEnd();
-		
-		//Early Exit #3: degenerated case: v0/v1/v2/v3 are duplicated
-		if(v0 == v1 || v0 == v2 || v0 == v3 || v1 == v2 || v1 == v3 || v2 == v3)
-			return verticesEnd();
-		
-		//Early Exit #4: v1, v3 cannot be both boundary vertex
-		if(v1->isBoundary() && v3->isBoundary())
-			return verticesEnd();
-		
-		VertexIter output = verticesEnd();
-		if(v3->isBoundary())
-		{
-			std::vector<HalfedgeIter> v1_out;
-			HalfedgeIter h = v1->halfedge();
-			do
-			{
-				v1_out.push_back(h);
-				h = h->next()->next()->twin();
-			}
-			while(h != v1->halfedge());
-			
-			//2. reassign elements
-			
-			//Halfedges
-			h7->twin() = h20; h7->edge() = e3;
-			h20->twin() = h7;
-			h12->twin() = h15; h12->edge() = e2;
-			h15->twin() = h12;
-			
-			for(auto h = v1_out.begin(); h!= v1_out.end(); ++h)
-				(*h)->vertex() = v3;
-			
-			//Vertices
-			v0->halfedge() = h20;
-			v3->halfedge() = h15;
-			v3->position = 0.5f * (v1->position + v3->position);
-			v2->halfedge() = h12;
-			
-			//Edges
-			e3->halfedge() = h20;
-			e2->halfedge() = h15;
-			
-			//Faces
-			
-			//3. delete elements
-			//Halfedges
-			deleteHalfedge(h0);
-			deleteHalfedge(h1);
-			deleteHalfedge(h2);
-			deleteHalfedge(h3);
-			deleteHalfedge(h4);
-			deleteHalfedge(h5);
-			
-			//Vertices
-			deleteVertex(v1);
-			
-			//Edges
-			markedEdges.at(e0) = true;
-			markedEdges.at(e1) = true;
-			markedEdges.at(e4) = true;
-			deleteEdge(e0);
-			deleteEdge(e1);
-			deleteEdge(e4);
-			
-			//Faces
-			deleteFace(f0);
-			deleteFace(f1);
-			
-			output = v3;
-		}
-		else
-		{
-			std::vector<HalfedgeIter> v3_out;
-			HalfedgeIter h = v3->halfedge();
-			do
-			{
-				v3_out.push_back(h);
-				h = h->next()->next()->twin();
-			}
-			while(h != v3->halfedge());
-			
-			//2. reassign elements
-			
-			//Halfedges
-			h7->twin() = h20;
-			h20->twin() = h7; h20->edge() = e0;
-			h12->twin() = h15;
-			h15->twin() = h12; h15->edge() = e1;
-			
-			for(auto h = v3_out.begin(); h!= v3_out.end(); ++h)
-				(*h)->vertex() = v1;
-			
-			//Vertices
-			v0->halfedge() = h20;
-			v1->halfedge() = h15;
-			v1->position = 0.5f * (v1->position + v3->position);
-			v2->halfedge() = h12;
-			
-			//Edges
-			e0->halfedge() = h20;
-			e1->halfedge() = h15;
-			
-			//Faces
-			
-			//3. delete elements
-			//Halfedges
-			deleteHalfedge(h0);
-			deleteHalfedge(h1);
-			deleteHalfedge(h2);
-			deleteHalfedge(h3);
-			deleteHalfedge(h4);
-			deleteHalfedge(h5);
-			
-			//Vertices
-			deleteVertex(v3);
-			
-			//Edges
-			markedEdges.at(e2) = true;
-			markedEdges.at(e3) = true;
-			markedEdges.at(e4) = true;
-			deleteEdge(e2);
-			deleteEdge(e3);
-			deleteEdge(e4);
-			
-			//Faces
-			deleteFace(f0);
-			deleteFace(f1);
-			
-			output = v1;
-		}
-		
-		//handle degenerated cases
-		if(nFaces() == 2 && nVertices() == 3 && nEdges() == 3 && boundaries.size() == 0)
-		{
-			facesBegin()->markBoundary(true);
-			boundaries.insert(boundaries.end(), *facesBegin());
-			deleteFace(facesBegin());
-		}
-		
-		return output;
-	}
-	
    VertexIter HalfedgeMesh::collapseEdge( EdgeIter e )
    {
       // TODO This method should collapse the given edge and return an iterator to the new vertex created by the collapse.
@@ -562,7 +366,49 @@ namespace CMU462
 		 VertexIter v2 = h4->vertex();
 		 VertexIter v3 = h2->vertex();
 		 
-		 //Early Exit #2: boundary vertex needs at least one triangle
+		 //Early Exit #2: The number of the joint neighbor vertices of the two merging vertices
+		 //must be EXACTLY TWO
+		 std::vector<VertexIter> v1_neighbors;
+		 std::vector<VertexIter> v3_neighbors;
+		 HalfedgeIter h = h3;
+		 do
+		 {
+			 h = h->twin();
+			 if(h->vertex() != v1)
+				 v1_neighbors.push_back(h->vertex());
+			 h = h->next();
+		 }
+		 while(h != h3);
+		 h = h2;
+		 do
+		 {
+			 h = h->twin();
+			 if(h->vertex() != v3)
+				 v3_neighbors.push_back(h->vertex());
+			 h = h->next();
+		 }
+		 while(h != h2);
+		 std::sort(v1_neighbors.begin(), v1_neighbors.end());
+		 std::sort(v3_neighbors.begin(), v3_neighbors.end());
+		 std::vector<VertexIter> joint_neighbors;
+		 std::set_intersection(v1_neighbors.begin(), v1_neighbors.end(),
+													 v3_neighbors.begin(), v3_neighbors.end(),
+													 std::back_inserter(joint_neighbors));
+		 if(joint_neighbors.size() != 2)
+			 return verticesEnd();
+		 
+		 //Early Exit #3: mesh must have more than 4 vertices if neither v1 nor v3 is boundary vertex,
+		 //and more than 3 vertices if either v1 or v3 is boundary vertex
+		 if(!v1->isBoundary() && !v3->isBoundary() && nVertices() <= 4)
+			 return verticesEnd();
+		 if((v1->isBoundary() || v3->isBoundary()) && nVertices() <= 3)
+			 return verticesEnd();
+		 
+		 //Early Exit #4: v1, v3 cannot be both boundary vertex
+		 if(v1->isBoundary() && v3->isBoundary())
+			 return verticesEnd();
+		 
+		 //Early Exit #5: boundary vertex needs at least one triangle
 		 //By convention, Vertex::degree() returns the face degree
 		 if(v0->isBoundary() && v0->degree() <= 1)
 			 return verticesEnd();
@@ -573,13 +419,11 @@ namespace CMU462
 		 if(v3->isBoundary() && v3->degree() <= 1)
 			 return verticesEnd();
 		
-		 //Early Exit #3: degenerated case: v0/v1/v2/v3 are duplicated
+		 //Early Exit #6: degenerated case: v0/v1/v2/v3 are duplicated
 		 if(v0 == v1 || v0 == v2 || v0 == v3 || v1 == v2 || v1 == v3 || v2 == v3)
 			 return verticesEnd();
 		 
-		 //Early Exit #4: v1, v3 cannot be both boundary vertex
-		 if(v1->isBoundary() && v3->isBoundary())
-			 return verticesEnd();
+
 		 
 		 VertexIter output = verticesEnd();
 		 if(v3->isBoundary())
@@ -697,14 +541,6 @@ namespace CMU462
 			 output = v1;
 		 }
 		 
-		 //handle degenerated cases
-		 if(nFaces() == 2 && nVertices() == 3 && nEdges() == 3 && boundaries.size() == 0)
-		 {
-			 facesBegin()->markBoundary(true);
-			 boundaries.insert(boundaries.end(), *facesBegin());
-			 deleteFace(facesBegin());
-		 }
-		 
 		 return output;
    }
 	
@@ -743,16 +579,11 @@ namespace CMU462
 		 do
 		 {
 			 h = h->twin();
-			 if(h->vertex() == v2)
+			 if(h->vertex() == v3)
 				 return false;
 			 h = h->next();
 		 }
 		 while(h != v2->halfedge());
-		 
-		 Size d0 = v0->degree();
-		 Size d1 = v1->degree();
-		 Size d2 = v2->degree();
-		 Size d3 = v3->degree();
 		 
 		 int oldDev =
 		 std::abs((int)v0->degree() - 6) +
@@ -812,7 +643,7 @@ namespace CMU462
 		 do
 		 {
 			 h = h->twin();
-			 if(h->vertex() == v2)
+			 if(h->vertex() == v3)
 				 return edgesEnd();
 			 h = h->next();
 		 }
@@ -892,8 +723,7 @@ namespace CMU462
 					//not the edge degree. The edge degree can be computed by finding the face
 					//degree, and adding 1 if the vertex is a boundary vertex.
 					int degree = v->degree();
-					if(v->isBoundary())
-						degree++;
+					
 					double u = degree == 3 ? 0.1875 : (3.0 / (8.0 * degree)); //0.1875 = 3/16
 					v->newPosition = v->position * (1.0 - u * degree);
 					HalfedgeIter h = v->halfedge();
@@ -1070,10 +900,8 @@ namespace CMU462
 			
 			for(auto edge = mesh.edgesBegin(); edge != mesh.edgesEnd(); ++edge)
 			{
-				if(!willCollapseBeValid(edge))
-					continue;
-				EdgeRecord rec = EdgeRecord(edge);
-				pqueue.insert(rec);
+				edge->record = EdgeRecord(edge);
+				pqueue.insert(edge->record);
 			}
 		 
       // TODO Until we reach the target edge budget, collapse the best edge.  Remember
@@ -1099,7 +927,7 @@ namespace CMU462
 				HalfedgeIter h = v0->halfedge();
 				do
 				{
-					pqueue.remove(h->edge());
+					pqueue.remove(h->edge()->record);
 					h = h->twin()->next();
 				}
 				while(h != v0->halfedge());
@@ -1107,30 +935,29 @@ namespace CMU462
 				h = v1->halfedge();
 				do
 				{
-					pqueue.remove(h->edge());
+					pqueue.remove(h->edge()->record);
 					h = h->twin()->next();
 				}
 				while(h != v1->halfedge());
 				
 				//5. Collapse the edge.
 				VertexIter v_new = mesh.collapseEdge(curr.edge);
-				
-				//6. Set the quadric of the new vertex to the quadric computed in Step 2.
-				v_new->quadric = q_new;
-				
-				//7. Insert any edge touching the new vertex into the queue, creating new edge records for each of them.
-				h = v_new->halfedge();
-				do
+				if(v_new != mesh.verticesEnd())
 				{
-					if(willCollapseBeValid(h->edge()))
+					//6. Set the quadric of the new vertex to the quadric computed in Step 2.
+					v_new->position = curr.optimalPoint;
+					v_new->quadric = q_new;
+					
+					//7. Insert any edge touching the new vertex into the queue, creating new edge records for each of them.
+					h = v_new->halfedge();
+					do
 					{
-						EdgeRecord rec(h->edge());
-						pqueue.insert(rec);
+						h->edge()->record = EdgeRecord(h->edge());
+						pqueue.insert(h->edge()->record);
+						h = h->twin()->next();
 					}
-					h = h->twin()->next();
+					while(h != v_new->halfedge());
 				}
-				while(h != v_new->halfedge());
-				
 			}
    }
 
@@ -1148,8 +975,13 @@ namespace CMU462
 				h = h->next();
 			}
 			while(h != halfedge());
-			
-			centroid /= degree();
+		 //By convention, Vertex::degree() returns the face degree,
+		 //not the edge degree. The edge degree can be computed by finding the face
+		 //degree, and adding 1 if the vertex is a boundary vertex.
+		 int degree = this->degree();
+		 if(isBoundary())
+			 degree++;
+			centroid /= (double)degree;
    }
 
    Vector3D Vertex::normal( void ) const
@@ -1163,24 +995,32 @@ namespace CMU462
 			HalfedgeCIter h = this->halfedge();
 			Vector3D nrm(0, 0, 0);
 			double totalarea = 0;
+//			std::vector<Vector3D> vec;
+//			std::vector<double> vec2;
 			do
 			{
 				h = h->twin();
 				FaceCIter f = h->face();
-				VertexCIter v1 = h->vertex();
-				VertexCIter v2 = h->next()->twin()->vertex();
-				if(!(v1->isBoundary() && v2->isBoundary()))
+				if(!f->isBoundary())
 				{
-					double area = 0.5 * cross(v1->position - position, v2->position - position).norm();
-					nrm += area * f->normal();
+					VertexCIter v1 = h->vertex();
+					VertexCIter v2 = h->next()->twin()->vertex();
+					Vector3D out = cross(v1->position - position, v2->position - position);
+					double area = out.norm();
+//					vec.push_back(out);
+//					vec2.push_back(area);
+					nrm += out;
 					totalarea += area;
 				}
 				h = h->next();
 			}
 			while(h != this->halfedge());
-		 
 			nrm /= totalarea;
 			nrm.normalize();
+//		 if(std::isnan(nrm.x) || std::isnan(nrm.y) || std::isnan(nrm.z))
+//		 {
+//			 std::cerr<<"wagh"<<std::endl;
+//		 }
 			return nrm;
 	 }
 
@@ -1199,51 +1039,76 @@ namespace CMU462
 		 
       // TODO Repeat the four main steps for 5 or 6 iterations
 			const int ITER_TIMES = 5;
+			const int SMOOTH_TIMES = 20;
+			const double WEIGHT_FACTOR = 0.2;
 			const double LONG_EDGE_2 = 1.7777777778;
 			const double SHORT_EDGE_2 = 0.64;
 			for(int i = 0; i < ITER_TIMES; ++i)
 			{
 				// TODO Split edges much longer than the target length (being careful about how the loop is written!)
-				auto old_end = mesh.edgesEnd();
-				old_end--;
-				for(auto edge = mesh.edgesBegin(); edge != old_end; ++edge)
-				{
-					Vector3D v0 = edge->halfedge()->vertex()->position;
-					Vector3D v1 = edge->halfedge()->twin()->vertex()->position;
-					if((v0 - v1).norm2() > LONG_EDGE_2 * mean2)
-						mesh.splitEdge(edge);
-				}
-				
-				auto edge = ++old_end;
-				if(edge != mesh.edgesEnd())
-				{
-					Vector3D v0 = edge->halfedge()->vertex()->position;
-					Vector3D v1 = edge->halfedge()->twin()->vertex()->position;
-					if((v0 - v1).norm2() > LONG_EDGE_2 * mean2)
-						mesh.splitEdge(edge);
-				}
-//
-//				// TODO Collapse edges much shorter than the target length.  Here we need to be EXTRA careful about
-//				// TODO advancing the loop, because many edges may have been destroyed by a collapse (which ones?)
-				std::unordered_map<EdgeIter, bool> markedEdges;
+				EdgeIter old_end = mesh.edgesEnd();
+				--old_end;
 				for(auto edge = mesh.edgesBegin(); edge != mesh.edgesEnd(); ++edge)
-					markedEdges.insert(std::make_pair(edge, false));
-				
-				for(auto mEdge = markedEdges.begin(); mEdge != markedEdges.end(); ++mEdge)
 				{
-					if(mEdge->second)
+					Vector3D v0 = edge->halfedge()->vertex()->position;
+					Vector3D v1 = edge->halfedge()->twin()->vertex()->position;
+					if((v0 - v1).norm2() > LONG_EDGE_2 * mean2)
+					{
+						mesh.splitEdge(edge);
+					}
+					if(edge == old_end)
+						break;
+				}
+				
+				// TODO Collapse edges much shorter than the target length.  Here we need to be EXTRA careful about
+				// TODO advancing the loop, because many edges may have been destroyed by a collapse (which ones?)
+				MutablePriorityQueue<EdgeRecord> edgeSet;
+				for(auto edge = mesh.edgesBegin(); edge != mesh.edgesEnd(); ++edge)
+				{
+					edge->record = EdgeRecord(edge);
+					edge->record.score = 0;
+					edgeSet.insert(edge->record);
+				}
+				while(edgeSet.size() > 0)
+				{
+					EdgeRecord curr = edgeSet.top();
+					edgeSet.pop();
+					
+					VertexIter v0 = curr.edge->halfedge()->vertex();
+					VertexIter v1 = curr.edge->halfedge()->twin()->vertex();
+					
+					if((v0->position - v1->position).norm2() >= SHORT_EDGE_2 * mean2)
 						continue;
 					
-					EdgeIter e = mEdge->first;
-					if(willCollapseBeValid(e))
+					HalfedgeIter h = v0->halfedge();
+					do
 					{
-						Vector3D v0 = e->halfedge()->vertex()->position;
-						Vector3D v1 = e->halfedge()->twin()->vertex()->position;
-						if((v0 - v1).norm2() < SHORT_EDGE_2 * mean2)
-							mesh.collapseEdge(e, markedEdges);
+						edgeSet.remove(h->edge()->record);
+						h = h->twin()->next();
 					}
+					while(h != v0->halfedge());
 					
-					mEdge->second = true;
+					h = v1->halfedge();
+					do
+					{
+						edgeSet.remove(h->edge()->record);
+						h = h->twin()->next();
+					}
+					while(h != v1->halfedge());
+					
+					VertexIter v_new = mesh.collapseEdge(curr.edge);
+					if(v_new != mesh.verticesEnd())
+					{
+						h = v_new->halfedge();
+						do
+						{
+							h->edge()->record = EdgeRecord(h->edge());
+							h->edge()->record.score = 0;
+							edgeSet.insert(h->edge()->record);
+							h = h->twin()->next();
+						}
+						while(h != v_new->halfedge());
+					}
 				}
 				
 				// TODO Now flip each edge if it improves vertex degree
@@ -1253,23 +1118,28 @@ namespace CMU462
 						mesh.flipEdge(edge);
 				}
 
-				// TODO Finally, apply some tangential smoothing to the vertex positions
-				const double WEIGHT_FACTOR = 0.2;
-				for(auto vertex = mesh.verticesBegin(); vertex != mesh.verticesEnd(); ++vertex)
-				{
-					vertex->computeCentroid();
-					Vector3D dir = vertex->centroid - vertex->position;
-					Vector3D nrm = vertex->normal();
-					dir -= (dot(nrm, dir) * nrm);
-					vertex->newPosition = vertex->position + WEIGHT_FACTOR * dir;
-				}
-				
+//				 TODO Finally, apply some tangential smoothing to the vertex positions
 
-				for(auto vertex = mesh.verticesBegin(); vertex != mesh.verticesEnd(); ++vertex)
+				for(int j = 0; j < SMOOTH_TIMES; ++j)
 				{
-					vertex->position = vertex->newPosition;
+					for(auto vertex = mesh.verticesBegin(); vertex != mesh.verticesEnd(); ++vertex)
+					{
+						if(vertex->isBoundary())
+							continue;
+						vertex->computeCentroid();
+					}
+					
+					for(auto vertex = mesh.verticesBegin(); vertex != mesh.verticesEnd(); ++vertex)
+					{
+						if(vertex->isBoundary())
+							continue;
+						Vector3D dir = vertex->centroid - vertex->position;
+						Vector3D nrm = vertex->normal();
+						dir -= (dot(nrm, dir) * nrm);
+						vertex->position = vertex->position + WEIGHT_FACTOR * dir;
+					}
 				}
-				
+
 			}
 
    }

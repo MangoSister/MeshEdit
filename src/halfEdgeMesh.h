@@ -394,19 +394,11 @@ namespace CMU462
           * check if this face represents a boundary loop
           * \returns true if and only if this face represents a boundary loop, false otherwise
           */
-         bool isBoundary( void )
+         bool isBoundary( void ) const
          {
             return _isBoundary;
          }
-		 
-				/**
-				 * set if this face represents a boundary loop
-				 */
-				 void markBoundary( bool mark )
-				 {
-						_isBoundary = mark;
-				 }
-		 
+
          /**
           * Get a unit face normal (computed via the area vector).
           * \returns a unit face normal (computed via the area vector).
