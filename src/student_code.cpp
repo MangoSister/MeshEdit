@@ -1,23 +1,26 @@
 /*
  * Student solution for CMU 15-462 Project 2 (MeshEdit)
  *
- * Implemented by ____ on ____.
+ * Implemented by Yang Zhou.
+ * Last Modified: Mar 11.
  *
  */
 
 #include "student_code.h"
 #include "mutablePriorityQueue.h"
 
-//namespace std
-//{
-//	template<> struct hash<EdgeIter>
-//	{
-//		std::size_t operator()(const EdgeIter& e) const
-//		{
-//			return std::hash<CMU462::Edge*>()(&*e);
-//		}
-//	};
-//}
+#include <unordered_set>
+
+namespace std
+{
+	template<> struct hash<EdgeIter>
+	{
+		std::size_t operator()(const EdgeIter& e) const
+		{
+			return std::hash<CMU462::Edge*>()(&*e);
+		}
+	};
+}
 
 namespace CMU462
 {
@@ -116,9 +119,7 @@ namespace CMU462
 			 
 			 //Edges
 			 //e0 is given
-			// EdgeIter e1 = h1->edge();
-			// EdgeIter e2 = h2->edge();
-			 
+
 			 //2. allocate new elements
 			 HalfedgeIter h10 = newHalfedge();
 			 HalfedgeIter h11 = newHalfedge();
@@ -995,8 +996,6 @@ namespace CMU462
 			HalfedgeCIter h = this->halfedge();
 			Vector3D nrm(0, 0, 0);
 			double totalarea = 0;
-//			std::vector<Vector3D> vec;
-//			std::vector<double> vec2;
 			do
 			{
 				h = h->twin();
@@ -1006,21 +1005,14 @@ namespace CMU462
 					VertexCIter v1 = h->vertex();
 					VertexCIter v2 = h->next()->twin()->vertex();
 					Vector3D out = cross(v1->position - position, v2->position - position);
-					double area = out.norm();
-//					vec.push_back(out);
-//					vec2.push_back(area);
 					nrm += out;
-					totalarea += area;
+					totalarea += out.norm();
 				}
 				h = h->next();
 			}
 			while(h != this->halfedge());
 			nrm /= totalarea;
 			nrm.normalize();
-//		 if(std::isnan(nrm.x) || std::isnan(nrm.y) || std::isnan(nrm.z))
-//		 {
-//			 std::cerr<<"wagh"<<std::endl;
-//		 }
 			return nrm;
 	 }
 
@@ -1043,6 +1035,9 @@ namespace CMU462
 			const double WEIGHT_FACTOR = 0.2;
 			const double LONG_EDGE_2 = 1.7777777778;
 			const double SHORT_EDGE_2 = 0.64;
+			std::unordered_set<EdgeIter> edgeSet;
+			edgeSet.reserve(mesh.nEdges());
+			
 			for(int i = 0; i < ITER_TIMES; ++i)
 			{
 				// TODO Split edges much longer than the target length (being careful about how the loop is written!)
@@ -1062,20 +1057,18 @@ namespace CMU462
 				
 				// TODO Collapse edges much shorter than the target length.  Here we need to be EXTRA careful about
 				// TODO advancing the loop, because many edges may have been destroyed by a collapse (which ones?)
-				MutablePriorityQueue<EdgeRecord> edgeSet;
+				edgeSet.clear();
 				for(auto edge = mesh.edgesBegin(); edge != mesh.edgesEnd(); ++edge)
 				{
-					edge->record = EdgeRecord(edge);
-					edge->record.score = 0;
-					edgeSet.insert(edge->record);
+					edgeSet.insert(edge);
 				}
 				while(edgeSet.size() > 0)
 				{
-					EdgeRecord curr = edgeSet.top();
-					edgeSet.pop();
+					EdgeIter curr = *(edgeSet.begin());
+					edgeSet.erase(edgeSet.begin());
 					
-					VertexIter v0 = curr.edge->halfedge()->vertex();
-					VertexIter v1 = curr.edge->halfedge()->twin()->vertex();
+					VertexIter v0 = curr->halfedge()->vertex();
+					VertexIter v1 = curr->halfedge()->twin()->vertex();
 					
 					if((v0->position - v1->position).norm2() >= SHORT_EDGE_2 * mean2)
 						continue;
@@ -1083,7 +1076,8 @@ namespace CMU462
 					HalfedgeIter h = v0->halfedge();
 					do
 					{
-						edgeSet.remove(h->edge()->record);
+						if(edgeSet.find(h->edge()) != edgeSet.end())
+							edgeSet.erase(h->edge());
 						h = h->twin()->next();
 					}
 					while(h != v0->halfedge());
@@ -1091,12 +1085,13 @@ namespace CMU462
 					h = v1->halfedge();
 					do
 					{
-						edgeSet.remove(h->edge()->record);
+						if(edgeSet.find(h->edge()) != edgeSet.end())
+							edgeSet.erase(h->edge());
 						h = h->twin()->next();
 					}
 					while(h != v1->halfedge());
 					
-					VertexIter v_new = mesh.collapseEdge(curr.edge);
+					VertexIter v_new = mesh.collapseEdge(curr);
 					if(v_new != mesh.verticesEnd())
 					{
 						h = v_new->halfedge();
@@ -1104,7 +1099,7 @@ namespace CMU462
 						{
 							h->edge()->record = EdgeRecord(h->edge());
 							h->edge()->record.score = 0;
-							edgeSet.insert(h->edge()->record);
+							edgeSet.insert(h->edge());
 							h = h->twin()->next();
 						}
 						while(h != v_new->halfedge());
