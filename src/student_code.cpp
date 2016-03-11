@@ -175,10 +175,10 @@ namespace CMU462
 			 HalfedgeIter h4 = h3->next();
 			 HalfedgeIter h5 = h4->next();
 			 
-			 HalfedgeIter h6 = h1->twin();
-			 HalfedgeIter h7 = h2->twin();
-			 HalfedgeIter h8 = h4->twin();
-			 HalfedgeIter h9 = h5->twin();
+//			 HalfedgeIter h6 = h1->twin();
+//			 HalfedgeIter h7 = h2->twin();
+//			 HalfedgeIter h8 = h4->twin();
+//			 HalfedgeIter h9 = h5->twin();
 			 
 			 //Vertices
 			 VertexIter v0 = h0->vertex();
@@ -216,23 +216,23 @@ namespace CMU462
 			 //Halfedges
 			 h0->next() = h10; h0->twin() = h3; h0->vertex() = v0; h0->edge() = e0; h0->face() = f0;
 			 
-			 h1->next() = h12; h1->twin() = h6; h1->vertex() = v1; h1->edge() = e1; h1->face() = f2;
+			 h1->next() = h12; /*h1->twin() = h6;*/ h1->vertex() = v1; h1->edge() = e1; h1->face() = f2;
 			 
-			 h2->next() = h0; h2->twin() = h7; h2->vertex() = v2; h2->edge() = e2; h2->face() = f0;
+			 h2->next() = h0; /*h2->twin() = h7;*/ h2->vertex() = v2; h2->edge() = e2; h2->face() = f0;
 		 
 			 h3->next() = h4; h3->twin() = h0; h3->vertex() = v4; h3->edge() = e0; h3->face() = f1;
 		 
-			 h4->next() = h13; h4->twin() = h8; h4->vertex() = v0; h4->edge() = e3; h4->face() = f1;
+			 h4->next() = h13; /*h4->twin() = h8;*/ h4->vertex() = v0; h4->edge() = e3; h4->face() = f1;
 		 
-			 h5->next() = h14; h5->twin() = h9; h5->vertex() = v3; h5->edge() = e4; h5->face() = f3;
+			 h5->next() = h14; /*h5->twin() = h9;*/ h5->vertex() = v3; h5->edge() = e4; h5->face() = f3;
 		 
-			 h6->twin() = h1; h6->vertex() = v2; h6->edge() = e1;
+//			 h6->twin() = h1; h6->vertex() = v2; h6->edge() = e1;
 		 
-			 h7->twin() = h2; h7->vertex() = v0; h7->edge() = e2;
+//			 h7->twin() = h2; h7->vertex() = v0; h7->edge() = e2;
 		 
-			 h8->twin() = h4; h8->vertex() = v3; h8->edge() = e3;
+//			 h8->twin() = h4; h8->vertex() = v3; h8->edge() = e3;
 		 
-			 h9->twin() = h5; h9->vertex() = v1; h9->edge() = e4;
+//			 h9->twin() = h5; h9->vertex() = v1; h9->edge() = e4;
 		 
 			 h10->next() = h2; h10->twin() = h12; h10->vertex() = v4; h10->edge() = e5; h10->face() = f0;
 		 
