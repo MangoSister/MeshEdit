@@ -1066,8 +1066,6 @@ namespace CMU462
 						h = v_new->halfedge();
 						do
 						{
-							h->edge()->record = EdgeRecord(h->edge());
-							h->edge()->record.score = 0;
 							edgeSet.insert(h->edge());
 							h = h->twin()->next();
 						}
