@@ -7,6 +7,12 @@ Extra credit features:
 1. Task 2: Split boundary edges.
 2. Task 4: Support subdividing surfaces with boundary.
 
+Task7:
+See task7.png file under project root folder.
+I performed downsampling on maxplanck.dae two times and used the vertex dragging
+tool to get him a fancy haircut!
+
+
 Other comments:
 1. I noticed that the isBoundary() of Edge seemed to be incorrect. The original
 function was written as
