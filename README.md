@@ -1,3 +1,1 @@
-# Assignment 2: MeshEdit
-
-http://462cmu.github.io/asst2_meshedit/
+MeshEdit: A mesh editer that features subdivision, mesh simplification and mesh resampling
